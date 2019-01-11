@@ -84,7 +84,8 @@ fmt.Printf("Renewed cert (DER): %x\n", cert2.Raw)
 Contributions are very welcome. Please ensure you add tests for new functionality and consider opening an issue
 to discuss larger changes before beginning.
 
-When developing, you can disable integration tests (which hit `testrfc7030.com:8443`) by running `go test -short ./...`.
+When developing, you can disable integration tests (which hit `testrfc7030.com:8443`) by running 
+`go test -short ./...`.
 
 ## TODOs
 
