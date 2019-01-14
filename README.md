@@ -10,13 +10,13 @@ Support is provided for calling the EST endpoints:
 - `/.well-known/est/simpleenroll`
 - `/.well-known/est/simplereenroll`
 
-Initial enrollment must use HTTP authentication (id and secret). Re-enrollment uses mutual TLS with a previously issued
-certificate and optionally HTTP authentication.  
+Enrollment functions support HTTP basic authentication and/or mutual TLS with a previously issued certificate. Check
+what your server is expecting.  
 
 ## Examples
 
 See `examples/examples.go` for an example that uses the test server at http://www.testrfc7030.com.
-
+o
 To execute the example script, run `go run examples/examples.go`. Read on for a description of the code.
 
 ### Get the EST certificates

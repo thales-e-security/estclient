@@ -32,10 +32,10 @@ import (
 // authentication.
 type AuthData struct {
 
-	// ID is a pre-shared ID used as part of HTTP authentication.
+	// ID is a pre-shared ID used as part of HTTP basic authentication.
 	ID *string
 
-	// Secret is a pre-shared secret used as part of HTTP authentication.
+	// Secret is a pre-shared secret used as part of HTTP basic authentication.
 	Secret *string
 
 	// Key is an existing private key owned by the client. If Key is supplied, ClientCert must also be present. The
