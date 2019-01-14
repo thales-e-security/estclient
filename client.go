@@ -22,11 +22,33 @@
 package estclient
 
 import (
-	"crypto/rsa"
+	"crypto"
 	"crypto/x509"
 
 	"github.com/pkg/errors"
 )
+
+// AuthData provides the authentication data offered by the client to the server. Non-nil values will be used during
+// authentication.
+type AuthData struct {
+
+	// ID is a pre-shared ID used as part of HTTP authentication.
+	ID *string
+
+	// Secret is a pre-shared secret used as part of HTTP authentication.
+	Secret *string
+
+	// Key is an existing private key owned by the client. If Key is supplied, ClientCert must also be present. The
+	// pair are used to perform client TLS authentication.
+	Key crypto.PrivateKey
+
+	// ClientCert is a certificate owned by the client. If ClientCert is supplied, Key must also be present. The
+	// pair are used to perform client TLS authentication.
+	ClientCert *x509.Certificate
+
+	// Prevent construction using un-keyed fields.
+	_ struct{}
+}
 
 // EstClient enables clients to request certificates from an EST server.
 type EstClient interface {
@@ -34,15 +56,11 @@ type EstClient interface {
 	// the apiclient certificates)
 	CaCerts() (*CaCertsInfo, error)
 
-	// SimpleEnroll requests a certificate for the user/device identified
-	// by id, secret.
-	SimpleEnroll(id, secret string, req *x509.CertificateRequest) (*x509.Certificate, error)
+	// SimpleEnroll requests a certificate from the EST server.
+	SimpleEnroll(authData AuthData, req *x509.CertificateRequest) (*x509.Certificate, error)
 
-	// SimpleReenroll renews a apiclient certificate. Mutual TLS is used, thus
-	// implementations require access to the existing certificate and key. If id and secret
-	// are non-nil, they are used for basic HTTP authentication.
-	SimpleReenroll(id, secret *string, key *rsa.PrivateKey, cert *x509.Certificate,
-		req *x509.CertificateRequest) (*x509.Certificate, error)
+	// SimpleReenroll renews a client certificate.
+	SimpleReenroll(authData AuthData, req *x509.CertificateRequest) (*x509.Certificate, error)
 }
 
 // CaCertsInfo contains the data returned by the EST server when
@@ -120,21 +138,25 @@ func (c estHTTPClient) CaCerts() (*CaCertsInfo, error) {
 
 	res, err := est.CACerts()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to request ca certificates")
+		return nil, errors.Wrap(err, "failed to request CA certificates")
 	}
 
 	return parseCaCerts(res)
 }
 
 // SimpleEnroll implements EstClient.SimpleEnroll
-func (c estHTTPClient) SimpleEnroll(id, secret string, req *x509.CertificateRequest) (*x509.Certificate, error) {
-	est, err := c.builder.Build(nil, nil)
+func (c estHTTPClient) SimpleEnroll(authData AuthData, req *x509.CertificateRequest) (*x509.Certificate, error) {
+	if err := validateAuthData(authData); err != nil {
+		return nil, err
+	}
+
+	est, err := c.builder.Build(authData.Key, authData.ClientCert)
 	if err != nil {
 		return nil, err
 	}
 
 	data := toBase64(req.Raw)
-	res, err := est.SimpleEnroll(data, id, secret)
+	res, err := est.SimpleEnroll(authData, data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to request certificate")
 	}
@@ -143,25 +165,20 @@ func (c estHTTPClient) SimpleEnroll(id, secret string, req *x509.CertificateRequ
 }
 
 // SimpleReenroll implements EstClient.SimpleReenroll
-func (c estHTTPClient) SimpleReenroll(id, secret *string, key *rsa.PrivateKey, cert *x509.Certificate,
-	req *x509.CertificateRequest) (*x509.Certificate, error) {
-	if key == nil {
-		return nil, errors.New("key cannot be nil")
-	}
-	if cert == nil {
-		return nil, errors.New("cert cannot be nil")
+func (c estHTTPClient) SimpleReenroll(authData AuthData, req *x509.CertificateRequest) (*x509.Certificate, error) {
+	if err := validateAuthData(authData); err != nil {
+		return nil, err
 	}
 
-	est, err := c.builder.Build(key, cert)
+	est, err := c.builder.Build(authData.Key, authData.ClientCert)
 	if err != nil {
 		return nil, err
 	}
 
 	data := toBase64(req.Raw)
-
-	res, err := est.SimpleReEnroll(data, id, secret)
+	res, err := est.SimpleReEnroll(authData, data)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to request certificate")
 	}
 
 	return readCertificate(res)

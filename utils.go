@@ -292,3 +292,14 @@ func isSignedBy(c *x509.Certificate, pubKey interface{}) (bool, error) {
 		return false, errors.New("unsupported public key algorithm")
 	}
 }
+
+// validateAuthData checks for valid combinations of authentication data.
+func validateAuthData(authData AuthData) error {
+	if (authData.ID == nil && authData.Secret != nil) || (authData.ID != nil && authData.Secret == nil) {
+		return errors.New("invalid authentication data: specify both ID and Secret")
+	}
+	if (authData.Key == nil && authData.ClientCert != nil) || (authData.Key != nil && authData.ClientCert == nil) {
+		return errors.New("invalid authentication data: specify both Key and ClientCert")
+	}
+	return nil
+}

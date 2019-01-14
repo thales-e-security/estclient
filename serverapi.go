@@ -21,7 +21,7 @@
 package estclient
 
 import (
-	"crypto/rsa"
+	"crypto"
 	"crypto/x509"
 
 	"github.com/go-openapi/runtime"
@@ -39,14 +39,12 @@ type serverAPI interface {
 	CACerts() (string, error)
 
 	// SimpleEnroll triggers the simple enroll endpoint of the EST server. certRequest should be a base64-encoded
-	// DER-format PKCS#10 certificate request. id and secret are use to authenticate the client. The result is the raw
-	// response from the server.
-	SimpleEnroll(certRequest, id, secret string) (string, error)
+	// DER-format PKCS#10 certificate request. The result is the raw response from the server.
+	SimpleEnroll(authData AuthData, certRequest string) (string, error)
 
 	// SimpleReEnroll triggers the simple re-enroll endpoint of the EST server. certRequest should be a base64-encoded
-	// DER-format PKCS#10 certificate request. id and secret are optionally used to authenticate the client. The result
-	// is the raw response from the server.
-	SimpleReEnroll(certRequest string, id, secret *string) (string, error)
+	// DER-format PKCS#10 certificate request. The result is the raw response from the server.
+	SimpleReEnroll(authData AuthData, certRequest string) (string, error)
 }
 
 // An apiBuilder creates serverAPI instances.
@@ -54,7 +52,7 @@ type apiBuilder interface {
 
 	// Build creates a serverAPI instance, optionally using the supplied private key and certificate
 	// for client authentication.
-	Build(currentKey *rsa.PrivateKey, currentCert *x509.Certificate) (serverAPI, error)
+	Build(currentKey crypto.PrivateKey, currentCert *x509.Certificate) (serverAPI, error)
 }
 
 type swaggerAPIBuilder struct {
@@ -62,7 +60,7 @@ type swaggerAPIBuilder struct {
 	host    string
 }
 
-func (s swaggerAPIBuilder) Build(currentKey *rsa.PrivateKey, currentCert *x509.Certificate) (serverAPI, error) {
+func (s swaggerAPIBuilder) Build(currentKey crypto.PrivateKey, currentCert *x509.Certificate) (serverAPI, error) {
 	o := httptransport.TLSClientOptions{
 		InsecureSkipVerify: s.options.InsecureSkipVerify,
 		LoadedCA:           s.options.TLSTrustAnchor,
@@ -104,13 +102,16 @@ func (s swaggerServerAPI) CACerts() (string, error) {
 	return res.Payload, nil
 }
 
-func (s swaggerServerAPI) SimpleEnroll(certRequest, id, secret string) (string, error) {
-	basicAuth := httptransport.BasicAuth(id, secret)
+func (s swaggerServerAPI) SimpleEnroll(authData AuthData, certRequest string) (string, error) {
+	var httpAuth runtime.ClientAuthInfoWriter
+	if authData.ID != nil && authData.Secret != nil {
+		httpAuth = httptransport.BasicAuth(*authData.ID, *authData.Secret)
+	}
 
 	params := operation.NewSimpleenrollParams()
 	params.Certrequest = certRequest
 
-	res, err := s.client.Simpleenroll(params, basicAuth)
+	res, err := s.client.Simpleenroll(params, httpAuth)
 	if err != nil {
 		return "", err
 	}
@@ -118,16 +119,16 @@ func (s swaggerServerAPI) SimpleEnroll(certRequest, id, secret string) (string, 
 	return res.Payload, nil
 }
 
-func (s swaggerServerAPI) SimpleReEnroll(certRequest string, id, secret *string) (string, error) {
-	var auth runtime.ClientAuthInfoWriter
-	if id != nil && secret != nil {
-		auth = httptransport.BasicAuth(*id, *secret)
+func (s swaggerServerAPI) SimpleReEnroll(authData AuthData, certRequest string) (string, error) {
+	var httpAuth runtime.ClientAuthInfoWriter
+	if authData.ID != nil && authData.Secret != nil {
+		httpAuth = httptransport.BasicAuth(*authData.ID, *authData.Secret)
 	}
 
 	params := operation.NewSimplereenrollParams()
 	params.Certrequest = certRequest
 
-	res, err := s.client.Simplereenroll(params, auth)
+	res, err := s.client.Simplereenroll(params, httpAuth)
 	if err != nil {
 		return "", err
 	}

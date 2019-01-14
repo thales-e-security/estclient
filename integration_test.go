@@ -42,7 +42,7 @@ func TestCaCertsWithServer(t *testing.T) {
 	client := NewEstClient(estServer)
 
 	_, err := client.CaCerts()
-	testError(t, err)
+	assert.NoError(t, err)
 }
 
 func TestSimpleEnrollWithServer(t *testing.T) {
@@ -51,10 +51,14 @@ func TestSimpleEnrollWithServer(t *testing.T) {
 	client := NewEstClient(estServer)
 
 	_, req, err := makeCertReq(nil)
-	testError(t, err)
+	assert.NoError(t, err)
 
-	_, err = client.SimpleEnroll(estID, estSecret, req)
-	testError(t, err)
+	authData := AuthData{
+		ID:     &estID,
+		Secret: &estSecret,
+	}
+	_, err = client.SimpleEnroll(authData, req)
+	assert.NoError(t, err)
 }
 
 func TestSimpleReenrollWithServer(t *testing.T) {
@@ -63,14 +67,22 @@ func TestSimpleReenrollWithServer(t *testing.T) {
 	client := NewEstClient(estServer)
 
 	key, req, err := makeCertReq(nil)
-	testError(t, err)
+	assert.NoError(t, err)
 
-	cert, err := client.SimpleEnroll(estID, estSecret, req)
-	testError(t, err)
+	authData := AuthData{
+		ID:     &estID,
+		Secret: &estSecret,
+	}
+
+	cert, err := client.SimpleEnroll(authData, req)
+	assert.NoError(t, err)
 
 	_, req2, err := makeCertReq(key)
-	_, err = client.SimpleReenroll(&estID, &estSecret, key, cert, req2)
-	testError(t, err)
+	authData.Key = key
+	authData.ClientCert = cert
+
+	_, err = client.SimpleReenroll(authData, req2)
+	assert.NoError(t, err)
 }
 
 func TestExplicitTAWithServer(t *testing.T) {
@@ -80,9 +92,14 @@ func TestExplicitTAWithServer(t *testing.T) {
 	client := NewEstClientWithOptions(estServer, ClientOptions{TLSTrustAnchor: wrongCACert})
 
 	_, req, err := makeCertReq(nil)
-	testError(t, err)
+	assert.NoError(t, err)
 
-	_, err = client.SimpleEnroll(estID, estSecret, req)
+	authData := AuthData{
+		ID:     &estID,
+		Secret: &estSecret,
+	}
+
+	_, err = client.SimpleEnroll(authData, req)
 
 	// Would be nice to assert what the error message is, but that
 	// seems a brittle approach

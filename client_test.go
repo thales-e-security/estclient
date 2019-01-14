@@ -21,6 +21,7 @@
 package estclient
 
 import (
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -29,72 +30,163 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-func testError(t *testing.T, err error) {
-	require.NoError(t, err, "%+v", err)
-}
-
 func TestCaCerts(t *testing.T) {
-	builder := &stubBuilder{api: stubAPI{t: t}}
+	builder := &stubBuilder{api: &stubAPI{t: t}}
 	client := newEstClient(builder)
 
 	_, err := client.CaCerts()
-	testError(t, err)
+	assert.NoError(t, err)
 
 	assert.Nil(t, builder.lastKey)
 	assert.Nil(t, builder.lastCert)
 }
 
 func TestSimpleEnroll(t *testing.T) {
-	builder := &stubBuilder{api: stubAPI{t: t}}
+	api := &stubAPI{t: t}
+	builder := &stubBuilder{api: api}
 	client := newEstClient(builder)
 
 	_, req, err := makeCertReq(nil)
-	testError(t, err)
+	assert.NoError(t, err)
 
-	_, err = client.SimpleEnroll(estID, estSecret, req)
-	testError(t, err)
+	authData := AuthData{}
 
-	assert.Nil(t, builder.lastKey)
-	assert.Nil(t, builder.lastCert)
+	_, err = client.SimpleEnroll(authData, req)
+	assert.NoError(t, err)
+	assert.Equal(t, authData, api.lastAuthData)
+
+	authData = AuthData{
+		ID:     &estID,
+		Secret: &estSecret,
+	}
+	_, err = client.SimpleEnroll(authData, req)
+	assert.NoError(t, err)
+	assert.Equal(t, authData, api.lastAuthData)
+
+	dummyCert := &x509.Certificate{}
+	dummyKey := &rsa.PrivateKey{}
+
+	authData = AuthData{
+		Key:        dummyKey,
+		ClientCert: dummyCert,
+	}
+	_, err = client.SimpleEnroll(authData, req)
+	assert.NoError(t, err)
+	assert.Equal(t, authData, api.lastAuthData)
 }
 
-func TestSimpleReenroll(t *testing.T) {
-	builder := &stubBuilder{api: stubAPI{t: t}}
+func TestSimpleEnrollBadAuth(t *testing.T) {
+	api := &stubAPI{t: t}
+	builder := &stubBuilder{api: api}
 	client := newEstClient(builder)
 
-	key, req, err := makeCertReq(nil)
-	testError(t, err)
+	_, req, err := makeCertReq(nil)
+	assert.NoError(t, err)
 
-	cert, err := client.SimpleEnroll(estID, estSecret, req)
-	testError(t, err)
-
-	assert.Nil(t, builder.lastKey)
-	assert.Nil(t, builder.lastCert)
-
-	_, req2, err := makeCertReq(key)
-
-	// First check that we can't re-enroll without passing old key material
-	_, err = client.SimpleReenroll(&estID, &estSecret, key, nil, req2)
+	authData := AuthData{
+		ID: &estID,
+	}
+	_, err = client.SimpleEnroll(authData, req)
 	assert.Error(t, err)
 
-	_, err = client.SimpleReenroll(&estID, &estSecret, nil, cert, req2)
+	authData = AuthData{
+		Secret: &estSecret,
+	}
+	_, err = client.SimpleEnroll(authData, req)
 	assert.Error(t, err)
 
-	// Now perform the actual test
-	_, err = client.SimpleReenroll(&estID, &estSecret, key, cert, req2)
-	testError(t, err)
+	dummyCert := &x509.Certificate{}
+	dummyKey := &rsa.PrivateKey{}
 
-	assert.Equal(t, key, builder.lastKey)
-	assert.Equal(t, cert, builder.lastCert)
+	authData = AuthData{
+		ClientCert: dummyCert,
+	}
+	_, err = client.SimpleEnroll(authData, req)
+	assert.Error(t, err)
+
+	authData = AuthData{
+		Key: dummyKey,
+	}
+	_, err = client.SimpleEnroll(authData, req)
+	assert.Error(t, err)
+}
+
+func TestSimpleReEnroll(t *testing.T) {
+	api := &stubAPI{t: t}
+	builder := &stubBuilder{api: api}
+	client := newEstClient(builder)
+
+	_, req, err := makeCertReq(nil)
+	assert.NoError(t, err)
+
+	authData := AuthData{}
+
+	_, err = client.SimpleReenroll(authData, req)
+	assert.NoError(t, err)
+	assert.Equal(t, authData, api.lastAuthData)
+
+	authData = AuthData{
+		ID:     &estID,
+		Secret: &estSecret,
+	}
+	_, err = client.SimpleReenroll(authData, req)
+	assert.NoError(t, err)
+	assert.Equal(t, authData, api.lastAuthData)
+
+	dummyCert := &x509.Certificate{}
+	dummyKey := &rsa.PrivateKey{}
+
+	authData = AuthData{
+		Key:        dummyKey,
+		ClientCert: dummyCert,
+	}
+	_, err = client.SimpleReenroll(authData, req)
+	assert.NoError(t, err)
+	assert.Equal(t, authData, api.lastAuthData)
+}
+
+func TestSimpleReEnrollBadAuth(t *testing.T) {
+	api := &stubAPI{t: t}
+	builder := &stubBuilder{api: api}
+	client := newEstClient(builder)
+
+	_, req, err := makeCertReq(nil)
+	assert.NoError(t, err)
+
+	authData := AuthData{
+		ID: &estID,
+	}
+	_, err = client.SimpleReenroll(authData, req)
+	assert.Error(t, err)
+
+	authData = AuthData{
+		Secret: &estSecret,
+	}
+	_, err = client.SimpleReenroll(authData, req)
+	assert.Error(t, err)
+
+	dummyCert := &x509.Certificate{}
+	dummyKey := &rsa.PrivateKey{}
+
+	authData = AuthData{
+		ClientCert: dummyCert,
+	}
+	_, err = client.SimpleReenroll(authData, req)
+	assert.Error(t, err)
+
+	authData = AuthData{
+		Key: dummyKey,
+	}
+	_, err = client.SimpleReenroll(authData, req)
+	assert.Error(t, err)
 }
 
 // brokenBuilder fails to build server APIs
 type brokenBuilder struct{}
 
-func (brokenBuilder) Build(currentKey *rsa.PrivateKey, currentCert *x509.Certificate) (serverAPI, error) {
+func (brokenBuilder) Build(currentKey crypto.PrivateKey, currentCert *x509.Certificate) (serverAPI, error) {
 	return nil, errors.New("boom")
 }
 
@@ -108,19 +200,13 @@ func runErrorTestsOnClient(t *testing.T, client EstClient) {
 	_, err := client.CaCerts()
 	assert.Error(t, err)
 
-	key, req, err := makeCertReq(nil)
-	testError(t, err)
+	_, req, err := makeCertReq(nil)
+	assert.NoError(t, err)
 
-	_, err = client.SimpleEnroll(estID, estSecret, req)
+	_, err = client.SimpleEnroll(AuthData{}, req)
 	assert.Error(t, err)
 
-	_, req2, err := makeCertReq(nil)
-	testError(t, err)
-
-	// Borrow an unrelated certificate
-	cert := readCertFromPemFileOrFail(t, "testdata/example-root.pem")
-
-	_, err = client.SimpleReenroll(nil, nil, key, cert, req2)
+	_, err = client.SimpleReenroll(AuthData{}, req)
 	assert.Error(t, err)
 }
 
@@ -130,11 +216,11 @@ func (brokenAPI) CACerts() (string, error) {
 	return "", errors.New("boom")
 }
 
-func (brokenAPI) SimpleEnroll(certRequest, id, secret string) (string, error) {
+func (brokenAPI) SimpleEnroll(authData AuthData, certRequest string) (string, error) {
 	return "", errors.New("boom")
 }
 
-func (brokenAPI) SimpleReEnroll(certRequest string, id, secret *string) (string, error) {
+func (brokenAPI) SimpleReEnroll(authData AuthData, certRequest string) (string, error) {
 	return "", errors.New("boom")
 }
 
@@ -205,12 +291,12 @@ func makeCertReq(existingKey *rsa.PrivateKey) (*rsa.PrivateKey, *x509.Certificat
 }
 
 type stubBuilder struct {
-	lastKey  *rsa.PrivateKey
+	lastKey  crypto.PrivateKey
 	lastCert *x509.Certificate
 	api      serverAPI
 }
 
-func (s *stubBuilder) Build(currentKey *rsa.PrivateKey, currentCert *x509.Certificate) (serverAPI, error) {
+func (s *stubBuilder) Build(currentKey crypto.PrivateKey, currentCert *x509.Certificate) (serverAPI, error) {
 	s.lastCert = currentCert
 	s.lastKey = currentKey
 	return s.api, nil
@@ -218,10 +304,11 @@ func (s *stubBuilder) Build(currentKey *rsa.PrivateKey, currentCert *x509.Certif
 
 // stubAPI returns some pre-recorded responses from http://testrfc7030.com/
 type stubAPI struct {
-	t *testing.T
+	t            *testing.T
+	lastAuthData AuthData
 }
 
-func (stubAPI) CACerts() (string, error) {
+func (*stubAPI) CACerts() (string, error) {
 	return "MIIBgQYJKoZIhvcNAQcCoIIBcjCCAW4CAQExADALBgkqhkiG9w0BBwGgggFWMIIB\n" +
 		"UjCB+qADAgECAgkAndg29DdzGY4wCgYIKoZIzj0EAwIwFzEVMBMGA1UEAxMMZXN0\n" +
 		"RXhhbXBsZUNBMB4XDTE4MDEwMjIwMzAzMFoXDTI3MTIzMTIwMzAzMFowFzEVMBMG\n" +
@@ -233,9 +320,8 @@ func (stubAPI) CACerts() (string, error) {
 		"TGZFMQA=\n", nil
 }
 
-func (s stubAPI) SimpleEnroll(certRequest, id, secret string) (string, error) {
-	assert.Equal(s.t, estID, id)
-	assert.Equal(s.t, estSecret, secret)
+func (s *stubAPI) SimpleEnroll(authData AuthData, certRequest string) (string, error) {
+	s.lastAuthData = authData
 
 	return "MIICdgYJKoZIhvcNAQcCoIICZzCCAmMCAQExADALBgkqhkiG9w0BBwGgggJLMIIC\n" +
 		"RzCCAe2gAwIBAgICFy0wCQYHKoZIzj0EATAXMRUwEwYDVQQDEwxlc3RFeGFtcGxl\n" +
@@ -253,7 +339,9 @@ func (s stubAPI) SimpleEnroll(certRequest, id, secret string) (string, error) {
 		"UokX7j9+enIxAA==\n", nil
 }
 
-func (stubAPI) SimpleReEnroll(certRequest string, id, secret *string) (string, error) {
+func (s *stubAPI) SimpleReEnroll(authData AuthData, certRequest string) (string, error) {
+	s.lastAuthData = authData
+
 	return "MIICdQYJKoZIhvcNAQcCoIICZjCCAmICAQExADALBgkqhkiG9w0BBwGgggJKMIIC\n" +
 		"RjCCAe2gAwIBAgICFy4wCQYHKoZIzj0EATAXMRUwEwYDVQQDEwxlc3RFeGFtcGxl\n" +
 		"Q0EwHhcNMTkwMTExMTExNDA1WhcNMjAwMTExMTExNDA1WjAcMRowGAYDVQQDExFU\n" +

@@ -42,16 +42,16 @@ import (
 
 func TestIsSelfSigned(t *testing.T) {
 	data, err := ioutil.ReadFile("testdata/example-root.pem")
-	testError(t, err)
+	assert.NoError(t, err)
 
 	block, _ := pem.Decode(data)
 	require.NotNil(t, block)
 
 	cert, err := x509.ParseCertificate(block.Bytes)
-	testError(t, err)
+	assert.NoError(t, err)
 
 	result, err := isSelfSigned(cert)
-	testError(t, err)
+	assert.NoError(t, err)
 
 	assert.True(t, result)
 }
@@ -99,28 +99,28 @@ func runCertBagTest(t *testing.T, sigAlg x509.SignatureAlgorithm, generate keyGe
 	}
 
 	oldKey, oldKeyPub, err := generate()
-	testError(t, err)
+	assert.NoError(t, err)
 	der, err := x509.CreateCertificate(rand.Reader, &template, &template, oldKeyPub, oldKey)
-	testError(t, err)
+	assert.NoError(t, err)
 	oldWithOld, err := x509.ParseCertificate(der)
-	testError(t, err)
+	assert.NoError(t, err)
 
 	template.NotAfter = template.NotAfter.AddDate(0, 0, 1)
 	newKey, newKeyPub, err := generate()
-	testError(t, err)
+	assert.NoError(t, err)
 	der, err = x509.CreateCertificate(rand.Reader, &template, &template, newKeyPub, newKey)
-	testError(t, err)
+	assert.NoError(t, err)
 	estTA, err := x509.ParseCertificate(der)
-	testError(t, err)
+	assert.NoError(t, err)
 
 	der, err = x509.CreateCertificate(rand.Reader, &template, estTA, oldKeyPub, newKey)
 	oldWithNew, err := x509.ParseCertificate(der)
-	testError(t, err)
+	assert.NoError(t, err)
 
 	der, err = x509.CreateCertificate(rand.Reader, &template, oldWithOld, newKeyPub, oldKey)
-	testError(t, err)
+	assert.NoError(t, err)
 	newWithOld, err := x509.ParseCertificate(der)
-	testError(t, err)
+	assert.NoError(t, err)
 
 	runParseTest(t, oldWithOld, oldWithNew, newWithOld, estTA)
 }
@@ -158,10 +158,10 @@ func runParseTest(t *testing.T, owo, own, nwo, nwn *x509.Certificate) {
 	certReponse = append(certReponse, owo.Raw...)
 
 	p7Data, err := pkcs7.DegenerateCertificate(certReponse)
-	testError(t, err)
+	assert.NoError(t, err)
 
 	result, err := parseCaCerts(base64.StdEncoding.EncodeToString(p7Data))
-	testError(t, err)
+	assert.NoError(t, err)
 
 	if assert.NotNil(t, result.EstTA) {
 		assert.Equal(t, result.EstTA.Raw, nwn.Raw)
@@ -184,10 +184,10 @@ func runParseTest(t *testing.T, owo, own, nwo, nwn *x509.Certificate) {
 func TestExampleCACertsData(t *testing.T) {
 	// Test data taken from RFC 7030 Appendix
 	b64, err := ioutil.ReadFile("testdata/example-cacerts.b64")
-	testError(t, err)
+	assert.NoError(t, err)
 
 	result, err := parseCaCerts(string(b64))
-	testError(t, err)
+	assert.NoError(t, err)
 
 	if assert.NotNil(t, result.EstTA) {
 		assert.Equal(t, "estExampleCA NwN", result.EstTA.Subject.CommonName)
@@ -238,4 +238,17 @@ func TestParseCACertsWithBadData(t *testing.T) {
 
 	_, err = parseCaCerts(base64.StdEncoding.EncodeToString([]byte("not valid pkcs7")))
 	assert.Error(t, err)
+}
+
+func TestCheckAuthData(t *testing.T) {
+	dummyCert := &x509.Certificate{}
+	dummyKey := &rsa.PrivateKey{}
+
+	assert.Error(t, validateAuthData(AuthData{ID: &estID}))
+	assert.Error(t, validateAuthData(AuthData{Secret: &estSecret}))
+	assert.Error(t, validateAuthData(AuthData{Key: dummyKey}))
+	assert.Error(t, validateAuthData(AuthData{ClientCert: dummyCert}))
+
+	// Multiple-errors
+	assert.Error(t, validateAuthData(AuthData{Secret: &estSecret, ClientCert: dummyCert}))
 }

@@ -30,6 +30,11 @@ import (
 	"github.com/thales-e-security/estclient"
 )
 
+var (
+	id     = "estuser"
+	secret = "estpwd"
+)
+
 // main contains examples used in documentation
 func main() {
 
@@ -57,14 +62,15 @@ func main() {
 	panicOnError(err)
 
 	// Enroll with EST CA
-	cert, err := client.SimpleEnroll("estuser", "estpwd", req)
+	authData := estclient.AuthData{ID: &id, Secret: &secret}
+
+	cert, err := client.SimpleEnroll(authData, req)
 	panicOnError(err)
 	fmt.Printf("Initial cert (DER): %x\n", cert.Raw)
 
 	// Re-enroll with EST CA
-	id := "estuser"
-	secret := "estpwd"
-	cert2, err := client.SimpleReenroll(&id, &secret, key, cert, req)
+	authData = estclient.AuthData{ID: &id, Secret: &secret, Key: key, ClientCert: cert}
+	cert2, err := client.SimpleReenroll(authData, req)
 	panicOnError(err)
 	fmt.Printf("Renewed cert (DER): %x\n", cert2.Raw)
 }
