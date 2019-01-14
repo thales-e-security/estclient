@@ -38,7 +38,6 @@ paths:
       tags:
         - operation
       summary: Distribution of CA Certificates
-      description: ''
       operationId: cacerts
       produces:
         - text/plain

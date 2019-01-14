@@ -8,4 +8,5 @@ require (
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/stretchr/testify v1.2.2
+	golang.org/x/net v0.0.0-20181201002055-351d144fa1fc
 )
