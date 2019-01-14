@@ -59,7 +59,8 @@ req, err := x509.ParseCertificateRequest(reqBytes)
 panicOnError(err)
 
 // Enroll with EST CA
-cert, err := client.SimpleEnroll("estuser", "estpwd", req)
+authData := estclient.AuthData{ID: &id, Secret: &secret}
+cert, err := client.SimpleEnroll(authData, req)
 panicOnError(err)
 fmt.Printf("Initial cert (DER): %x\n", cert.Raw)
 ```
@@ -72,9 +73,8 @@ authentication (with an id and secret) is optional. Pass `nil` if these values a
 
 ```go
 // Re-enroll with EST CA
-id := "estuser"
-secret := "estpwd"
-cert2, err := client.SimpleReenroll(&id, &secret, key, cert, req)
+authData = estclient.AuthData{ID: &id, Secret: &secret, Key: key, ClientCert: cert}
+cert2, err := client.SimpleReenroll(authData, req)
 panicOnError(err)
 fmt.Printf("Renewed cert (DER): %x\n", cert2.Raw)
 ```
