@@ -20,7 +20,10 @@
 
 package estclient
 
-import "encoding/base64"
+import (
+	"encoding/base64"
+	"strings"
+)
 
 const (
 	base64LineLength = 64
@@ -38,14 +41,15 @@ func minInt(x, y int) int {
 // as necessary. The resulting string will always end with a line
 // break.
 func hardWrap(text string, limit int) string {
-	result := ""
+	var b strings.Builder
 
 	for j := 0; j < len(text)-1; j += limit {
 		upperBound := minInt(j+limit, len(text))
-		result += text[j:upperBound] + "\n"
+		b.WriteString(text[j:upperBound])
+		b.WriteString("\n")
 	}
 
-	return result
+	return b.String()
 }
 
 // toBase64 converts bytes to base64, wrapped at 64 chars
