@@ -181,30 +181,33 @@ func runParseTest(t *testing.T, owo, own, nwo, nwn *x509.Certificate) {
 	assert.True(t, len(result.EstChainCerts) == 0)
 }
 
-func TestExampleCACertsData(t *testing.T) {
-	// Test data taken from RFC 7030 Appendix
-	b64, err := ioutil.ReadFile("testdata/example-cacerts.b64")
-	assert.NoError(t, err)
-
-	result, err := parseCaCerts(string(b64))
-	assert.NoError(t, err)
-
-	if assert.NotNil(t, result.EstTA) {
-		assert.Equal(t, "estExampleCA NwN", result.EstTA.Subject.CommonName)
-	}
-
-	if assert.NotNil(t, result.NewWithOld) {
-		assert.Equal(t, "estExampleCA NwO", result.NewWithOld.Subject.CommonName)
-	}
-
-	if assert.NotNil(t, result.OldWithOld) {
-		assert.Equal(t, "estExampleCA OwO", result.OldWithOld.Subject.CommonName)
-	}
-
-	if assert.NotNil(t, result.OldWithNew) {
-		assert.Equal(t, "estExampleCA OwN", result.OldWithNew.Subject.CommonName)
-	}
-}
+// SHA-1 support has been removed, so this test is no longer possible to run. Leaving this here, commented, in case
+// developers wish to test this functionality (by briefly enabling SHA-1 support).
+//
+//func TestExampleCACertsData(t *testing.T) {
+//	// Test data taken from RFC 7030 Appendix
+//	b64, err := ioutil.ReadFile("testdata/example-cacerts.b64")
+//	assert.NoError(t, err)
+//
+//	result, err := parseCaCerts(string(b64))
+//	assert.NoError(t, err)
+//
+//	if assert.NotNil(t, result.EstTA) {
+//		assert.Equal(t, "estExampleCA NwN", result.EstTA.Subject.CommonName)
+//	}
+//
+//	if assert.NotNil(t, result.NewWithOld) {
+//		assert.Equal(t, "estExampleCA NwO", result.NewWithOld.Subject.CommonName)
+//	}
+//
+//	if assert.NotNil(t, result.OldWithOld) {
+//		assert.Equal(t, "estExampleCA OwO", result.OldWithOld.Subject.CommonName)
+//	}
+//
+//	if assert.NotNil(t, result.OldWithNew) {
+//		assert.Equal(t, "estExampleCA OwN", result.OldWithNew.Subject.CommonName)
+//	}
+//}
 
 func TestReadCertificate(t *testing.T) {
 	_, err := readCertificate("not base64")

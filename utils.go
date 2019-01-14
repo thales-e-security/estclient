@@ -39,15 +39,10 @@ import (
 // algs contains mappings between signature algorithms and the appropriate
 // public key algorithm and hashes
 var algs = map[x509.SignatureAlgorithm]algAndHash{
-	//x509.MD2WithRSA:       {x509.RSA, crypto.M},
-	x509.MD5WithRSA:       {x509.RSA, crypto.MD5},
-	x509.SHA1WithRSA:      {x509.RSA, crypto.SHA1},
 	x509.SHA256WithRSA:    {x509.RSA, crypto.SHA256},
 	x509.SHA384WithRSA:    {x509.RSA, crypto.SHA384},
 	x509.SHA512WithRSA:    {x509.RSA, crypto.SHA512},
-	x509.DSAWithSHA1:      {x509.DSA, crypto.SHA1},
 	x509.DSAWithSHA256:    {x509.DSA, crypto.SHA256},
-	x509.ECDSAWithSHA1:    {x509.ECDSA, crypto.SHA1},
 	x509.ECDSAWithSHA256:  {x509.ECDSA, crypto.SHA256},
 	x509.ECDSAWithSHA384:  {x509.ECDSA, crypto.SHA384},
 	x509.ECDSAWithSHA512:  {x509.ECDSA, crypto.SHA512},
@@ -242,8 +237,12 @@ func isSelfSigned(c *x509.Certificate) (bool, error) {
 }
 
 func isSignedBy(c *x509.Certificate, pubKey interface{}) (bool, error) {
-	hash := algs[c.SignatureAlgorithm].hash
+	alg, found := algs[c.SignatureAlgorithm]
+	if !found {
+		return false, errors.Errorf("unsupported signature algorithm: %s", c.SignatureAlgorithm.String())
+	}
 
+	hash := alg.hash
 	h := hash.New()
 	h.Write(c.RawTBSCertificate)
 	hashedCert := h.Sum(nil)
@@ -289,7 +288,7 @@ func isSignedBy(c *x509.Certificate, pubKey interface{}) (bool, error) {
 		return ecdsa.Verify(pk, hashedCert, dsaSig.R, dsaSig.S), nil
 
 	default:
-		return false, errors.New("unsupported public key algorithm")
+		return false, errors.New("unknown or unsupported public key algorithm")
 	}
 }
 
