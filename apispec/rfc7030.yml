@@ -40,7 +40,7 @@ paths:
       summary: Distribution of CA Certificates
       operationId: cacerts
       produces:
-        - text/plain
+        - application/pkcs7-mime
       responses:
         200:
           description: successful operation
@@ -68,7 +68,7 @@ paths:
       consumes:
         - application/pkcs10
       produces:
-        - text/plain
+        - application/pkcs7-mime
       parameters:
         - name: certrequest
           in: body
@@ -109,7 +109,7 @@ paths:
       consumes:
         - application/pkcs10
       produces:
-        - text/plain
+        - application/pkcs7-mime
       parameters:
         - name: certrequest
           in: body
